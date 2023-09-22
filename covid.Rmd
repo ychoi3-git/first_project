@@ -1,0 +1,145 @@
+---
+title: "covid_pandemic"
+author: "Youn-Jeong Choi"
+date: "2023-09-05"
+output: rmarkdown::github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+#loading packages
+library(readr)
+library(ggplot2)
+library(dplyr)
+```
+
+This is an R Markdown document. 
+
+
+### 1. Worldwide confirmed cases were visualized over time: Read the worldwide confirmed cases data and make a plot.
+
+```{r}
+# Read confirmed_cases_worldwide.csv into confirmed_cases_worldwide
+confirmed_cases_worldwide <- read_csv("data/confirmed_cases_worldwide.csv")
+
+# See the result
+confirmed_cases_worldwide
+
+# Draw a line plot of cumulative cases vs. date
+# Label the y-axis
+ggplot(confirmed_cases_worldwide, aes(date, cum_cases)) +
+  geom_line() +
+  ylab("Cumulative confirmed cases")
+```
+
+
+### 2. China was compared to the rest of the world: Read and visualize confirmed data between China vs non-China 
+
+```{r}
+# Read in datasets/confirmed_cases_china_vs_world.csv
+confirmed_cases_china_vs_world <- read_csv("data/confirmed_cases_china_vs_world.csv")
+
+# See the result
+glimpse(confirmed_cases_china_vs_world)
+
+# Draw a line plot of cumulative cases vs. date, colored by is_china
+# Define aesthetics within the line geom
+plt_cum_confirmed_cases_china_vs_world <- ggplot(confirmed_cases_china_vs_world) +
+  geom_line(aes(date, cum_cases, color = is_china)) +
+  ylab("Cumulative confirmed cases")
+
+# See the plot
+plt_cum_confirmed_cases_china_vs_world
+```
+
+
+### 3. Let's annotate! 
+ We can better understand the curves by annotation.
+ 
+```{r}
+who_events <- tribble(
+  ~ date, ~ event,
+  "2020-01-30", "Global health\nemergency declared",
+  "2020-03-11", "Pandemic\ndeclared",
+  "2020-02-13", "China reporting\nchange"
+) %>%
+  mutate(date = as.Date(date))
+
+# Using who_events, add vertical dashed lines with an xintercept at date
+# and text at date, labeled by event, and at 100000 on the y-axis
+plt_cum_confirmed_cases_china_vs_world +
+  geom_vline(data = who_events, aes(xintercept = date), linetype = 2) + geom_text(data = who_events, aes(date, 100000, label = event)) 
+```
+
+
+### 4.Let's add a trend line for China
+
+```{r}
+# Filter for China, from Feb 15
+china_after_feb15 <- confirmed_cases_china_vs_world %>%
+  filter(date >= "2020-02-15", is_china == "China")
+
+# Using china_after_feb15, draw a line plot cum_cases vs. date
+# Add a smooth trend line using linear regression, no error bars
+china_after_feb15 %>% ggplot(aes(date, cum_cases)) +
+  geom_line() +
+  geom_smooth(method = "lm", formula = y~x, se = FALSE) +
+  ylab("Cumulative confirmed cases")
+```
+
+
+### 5. Then add a trend line to the rest of world.
+    How about the other countries instead of China?  
+
+```{r}
+# Filter confirmed_cases_china_vs_world for not China
+not_china <- confirmed_cases_china_vs_world %>%
+filter(is_china == "Not China")
+
+# Using not_china, draw a line plot cum_cases vs. date
+# Add a smooth trend line using linear regression, no error bars
+plt_not_china_trend_lin <- not_china %>% ggplot(aes(date, cum_cases)) +
+  geom_line() +
+  geom_smooth(method = "lm", formula =y~x, se = FALSE) +
+  ylab("Cumulative confirmed cases")
+plt_not_china_trend_lin
+# Modify the plot to use a logarithmic scale on the y-axis
+plt_not_china_trend_lin + scale_y_log10()
+```
+
+
+### 6. Which countries outside of China have been stricken hard by covid-19?
+
+```{r}
+# Run this to get the data for each country
+confirmed_cases_by_country <- read_csv("data/confirmed_cases_by_country.csv")
+glimpse(confirmed_cases_by_country)
+
+# Group by country, summarize to calculate total cases, find the top 7
+top_countries_by_total_cases <- confirmed_cases_by_country %>%
+  group_by(country) %>%
+  summarize(total_cases = sum(cases)) %>%
+  top_n(7)
+
+# See the result
+top_countries_by_total_cases
+```
+
+
+### 7. Let's plot the top 7 the most stricken countries outside of China over time.
+
+```{r}
+# Read in the dataset from datasets/confirmed_cases_top7_outside_china.csv
+confirmed_cases_top7_outside_china <- read_csv("data/confirmed_cases_top7_outside_china.csv")
+
+# Glimpse at the contents of confirmed_cases_top7_outside_china
+glimpse(confirmed_cases_top7_outside_china)
+
+# Using confirmed_cases_top7_outside_china, draw a line plot of
+# cum_cases vs. date, colored by country
+confirmed_cases_top7_outside_china %>% 
+ggplot(aes(date, cum_cases, color = country)) +
+geom_line()
+```
+
